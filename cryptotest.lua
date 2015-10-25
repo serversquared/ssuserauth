@@ -3,12 +3,14 @@
 --Copyright (c) 2015.
 --To be released under GNU AGPL v3.
 
---sha2 library link here
+-- Installed with `luarocks install sha2'
 require("hmac.sha2")
+-- Installed with `luarocks install bcrypt'
+bcrypt = require("bcrypt")
 
 
 
-local itersmultiplier = 1
+local rounds = 14
 local passwordversion = 1
 usertable = {}
 local seed = os.time()
@@ -63,18 +65,20 @@ end
 
 
 
-function hashsalt(password, salt, iterations)
-	if password:len() > 128 then
+function generatesalt()
+	return string.random(128, "%l%u%d%p")
+end
+
+
+function hashsalt(password, salt, digest)
+	if password:len() > 72 then
 		return nil
 	end
-	-- We SHOULD be using PBKDF2 here, but I couldn't find a Lua implementation.
-	-- This is not as secure as PBKDF2.
-	for i = 1, iterations, 1 do
-		-- I _think_ the password is supposed to be constant here...
-		-- If not, change `salt =' to `password =' and return password.
-		salt = hmac.sha512(password, salt)
+	if not digest then
+		return bcrypt.digest(hmac.sha512(salt, password), rounds)
+	else
+		return bcrypt.verify(hmac.sha512(salt, password), digest)
 	end
-	return salt
 end
 
 
@@ -86,10 +90,9 @@ function adduser(username, password)
 	end
 	usertable[username] = {}
 	usertable[username].version = passwordversion
-	usertable[username].iters = math.floor(os.time() / 50000 * itersmultiplier)
-	usertable[username].salt = string.random(128)
-	usertable[username].password = hashsalt(password, usertable[username].salt, usertable[username].iters)
-	print("Created user " .. username .. ", hashed " .. usertable[username].iters .. " times.")
+	usertable[username].salt = generatesalt()
+	usertable[username].password = hashsalt(password, usertable[username].salt)
+	print("Created user " .. username .. ".")
 end
 
 function removeuser(username)
@@ -106,13 +109,12 @@ function updateuser(username, password)
 		return nil
 	end
 	usertable[username].version = passwordversion
-	usertable[username].iters = math.floor(os.time() / 50000 * itersmultiplier)
-	usertable[username].salt = string.random(128)
-	usertable[username].password = hashsalt(password, usertable[username].salt, usertable[username].iters)
+	usertable[username].salt = generatesalt()
+	usertable[username].password = hashsalt(password, usertable[username].salt)
 end
 
 function checkpassword(username, password)
-	if hashsalt(password, usertable[username].salt, usertable[username].iters) == usertable[username].password then
+	if hashsalt(password, usertable[username].salt, usertable[username].password) then
 		print("Password match!")
 		updateuser(username, password)
 		print("Re-salted password!")
