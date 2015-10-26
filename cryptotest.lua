@@ -116,8 +116,6 @@ end
 function checkpassword(username, password)
 	if hashsalt(password, usertable[username].salt, usertable[username].password) then
 		print("Password match!")
-		updateuser(username, password)
-		print("Re-salted password!")
 	else
 		print("Password mismatch!")
 	end
