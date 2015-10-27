@@ -90,6 +90,7 @@ function adduser(username, password)
 	end
 	usertable[username] = {}
 	usertable[username].version = passwordversion
+	usertable[username].updated = os.time()
 	usertable[username].salt = generatesalt()
 	usertable[username].password = hashsalt(password, usertable[username].salt)
 	print("Created user " .. username .. ".")
@@ -103,12 +104,13 @@ function removeuser(username)
 	usertable[username] = nil
 end
 
-function updateuser(username, password)
+function updatepassword(username, password)
 	if usertable[username] == nil then
 		print("User does not exist.")
 		return nil
 	end
 	usertable[username].version = passwordversion
+	usertable[username].updated = os.time()
 	usertable[username].salt = generatesalt()
 	usertable[username].password = hashsalt(password, usertable[username].salt)
 end
@@ -116,6 +118,7 @@ end
 function checkpassword(username, password)
 	if hashsalt(password, usertable[username].salt, usertable[username].password) then
 		print("Password match!")
+		print("Password was last updated " .. math.floor((os.time() - usertable[username].updated) / 86400) .. " days ago.")
 	else
 		print("Password mismatch!")
 	end
@@ -126,7 +129,11 @@ function dumpusertable()
 		print(k)
 		if type(v) == "table" then
 			for k2, v2 in pairs(usertable[k]) do 
-				print("", k2, v2)
+				if k2 == "updated" then
+					print("", k2, v2, "(" .. os.date("%A %d %B %Y at %X", v2) .. ")")
+				else
+					print("", k2, v2)
+				end
 			end
 		end
 	end
